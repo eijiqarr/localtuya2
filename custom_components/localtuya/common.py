@@ -2,8 +2,8 @@
 import asyncio
 import logging
 from datetime import timedelta
-from homeassistant.config_entries import ConfigEntry
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     CONF_DEVICE_ID,
     CONF_ENTITIES,
@@ -14,30 +14,30 @@ from homeassistant.const import (
     CONF_SCAN_INTERVAL,
 )
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.dispatcher import (
     async_dispatcher_connect,
     async_dispatcher_send,
 )
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.restore_state import RestoreEntity
 
 from . import pytuya
 from .const import (
+    CONF_IS_GATEWAY,
     CONF_LOCAL_KEY,
+    CONF_PARENT_GATEWAY,
     CONF_PRODUCT_KEY,
     CONF_PROTOCOL_VERSION,
-    CONF_IS_GATEWAY,
-    CONF_PARENT_GATEWAY,
     DOMAIN,
-    GW_REQ_ADD,
-    GW_REQ_REMOVE,
-    GW_REQ_STATUS,
-    GW_REQ_SET_DP,
-    GW_REQ_SET_DPS,
-    GW_EVT_STATUS_UPDATED,
     GW_EVT_CONNECTED,
     GW_EVT_DISCONNECTED,
+    GW_EVT_STATUS_UPDATED,
+    GW_REQ_ADD,
+    GW_REQ_REMOVE,
+    GW_REQ_SET_DP,
+    GW_REQ_SET_DPS,
+    GW_REQ_STATUS,
     SUB_DEVICE_RECONNECT_INTERVAL,
     TUYA_DEVICE,
 )
@@ -288,7 +288,10 @@ class TuyaGatewayDevice(pytuya.TuyaListener, pytuya.ContextualLogger):
 
         # Safety check
         if not config_entry.get(CONF_IS_GATEWAY):
-            raise Exception("Device {0} is not a gateway but using TuyaGatewayDevice!", config_entry[CONF_DEVICE_ID])
+            raise Exception(
+                "Device {0} is not a gateway but using TuyaGatewayDevice!",
+                config_entry[CONF_DEVICE_ID],
+            )
 
     @property
     def connected(self):
@@ -308,7 +311,7 @@ class TuyaGatewayDevice(pytuya.TuyaListener, pytuya.ContextualLogger):
             signal = f"localtuya_gateway_{self._config_entry[CONF_DEVICE_ID]}"
             self._sub_device_task = async_dispatcher_connect(
                 self._hass, signal, self._handle_sub_device_request
-        )
+            )
 
         try:
             self._interface = await pytuya.connect(
@@ -415,19 +418,18 @@ class TuyaGatewayDevice(pytuya.TuyaListener, pytuya.ContextualLogger):
 
     def _dispatch_event(self, event, event_data, cid):
         """Dispatches an event to a sub-device"""
-        self.debug("Dispatching event %s to sub-device %s with data %s", event, cid, event_data)
+        self.debug(
+            "Dispatching event %s to sub-device %s with data %s", event, cid, event_data
+        )
 
         async_dispatcher_send(
             self._hass,
             f"localtuya_subdevice_{cid}",
-            {
-                "event": event,
-                "event_data": event_data
-            }
+            {"event": event, "event_data": event_data},
         )
 
     async def _retry_sub_device_connection(self, _now):
-        """ Retries sub-device status, to be called by a HASS interval """
+        """Retries sub-device status, to be called by a HASS interval"""
         for cid in self._sub_devices:
             if self._sub_devices[cid]["retry_status"]:
                 await self._get_sub_device_status(cid, True)
@@ -486,7 +488,10 @@ class TuyaSubDevice(pytuya.TuyaListener, pytuya.ContextualLogger):
 
         # Safety check
         if not config_entry.get(CONF_PARENT_GATEWAY):
-            raise Exception("Device {0} is not a sub-device but using TuyaSubDevice!", config_entry[CONF_DEVICE_ID])
+            raise Exception(
+                "Device {0} is not a sub-device but using TuyaSubDevice!",
+                config_entry[CONF_DEVICE_ID],
+            )
 
         # Populate dps list from entities
         for entity in config_entry[CONF_ENTITIES]:
@@ -524,9 +529,9 @@ class TuyaSubDevice(pytuya.TuyaListener, pytuya.ContextualLogger):
                 self._hass, signal, _new_entity_handler
             )
 
-            self._async_dispatch_gateway_request(GW_REQ_ADD, {
-                "dps": self.dps_to_request
-            })
+            self._async_dispatch_gateway_request(
+                GW_REQ_ADD, {"dps": self.dps_to_request}
+            )
 
             self._is_added = True
 
@@ -548,7 +553,9 @@ class TuyaSubDevice(pytuya.TuyaListener, pytuya.ContextualLogger):
 
     def _async_dispatch_gateway_request(self, request, content):
         """Dispatches a request to the parent gateway using a retry loop"""
-        self.debug("Dispatching request %s to gateway with content %s", request, content)
+        self.debug(
+            "Dispatching request %s to gateway with content %s", request, content
+        )
 
         async_dispatcher_send(
             self._hass,
@@ -563,10 +570,13 @@ class TuyaSubDevice(pytuya.TuyaListener, pytuya.ContextualLogger):
     async def set_dp(self, state, dp_index):
         """Change value of a DP of the Tuya device."""
         if self._is_connected:
-            self._async_dispatch_gateway_request(GW_REQ_SET_DP, {
-                "value": state,
-                "dp_index": dp_index,
-            })
+            self._async_dispatch_gateway_request(
+                GW_REQ_SET_DP,
+                {
+                    "value": state,
+                    "dp_index": dp_index,
+                },
+            )
         else:
             self.error(
                 "Not connected to device %s", self._config_entry[CONF_FRIENDLY_NAME]
@@ -575,9 +585,12 @@ class TuyaSubDevice(pytuya.TuyaListener, pytuya.ContextualLogger):
     async def set_dps(self, states):
         """Change value of DPs of the Tuya device."""
         if self._is_connected:
-            self._async_dispatch_gateway_request(GW_REQ_SET_DPS, {
-                "dps": states,
-            })
+            self._async_dispatch_gateway_request(
+                GW_REQ_SET_DPS,
+                {
+                    "dps": states,
+                },
+            )
         else:
             self.error(
                 "Not connected to device %s", self._config_entry[CONF_FRIENDLY_NAME]
